@@ -1,28 +1,21 @@
 use cabocha::parser::Parser;
 use regex::Regex;
+use itertools::Itertools;
 
 fn main() {
     let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("しかしその当時は考えもなかったから別段私は恐ろしいとも思わなかった。"));
     let chunks: Vec<Chunk> = Chunk::new(res_txt);
 
-    //println!("{:?}", chunks);
+    println!("digraph nlp {{");
     for chunk in &chunks {
         match chunk.parent {
-            None => (),
             Some(pid) => {
-                let parent = chunks[pid].clone();
-                if chunk.include_pos(&String::from("名詞")) && parent.include_pos(&String::from("動詞")) {
-                    chunk.print_words();
-                    print!(" ");
-                    parent.print_words();
-                    println!("");
-                } else {
-                    chunk.print_words();
-                    println!(" not match");
-                }
-            }
+                println!("\t{} -> {}", chunk.join_words(), chunks[pid].join_words());
+            },
+            None => (),
         }
     }
+    println!("}}");
 }
 
 #[derive(Debug, Clone)]
@@ -142,6 +135,10 @@ impl Chunk {
             let Word { surface, .. } = word;
             print!("{}", surface);
         }
+    }
+
+    fn join_words(&self) -> String {
+        (&self.words).into_iter().map(|w| &w.surface as &str).intersperse("").collect()
     }
 
      fn include_pos(&self, pos: &String) -> bool {
