@@ -3,19 +3,23 @@ use regex::Regex;
 use itertools::Itertools;
 
 fn main() {
-    let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("しかしその当時は考えもなかったから別段私は恐ろしいとも思わなかった。"));
+    //let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("しかしその当時は考えもなかったから別段私は恐ろしいとも思わなかった。"));
+    let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("吾輩はここで始めて人間というものを見た。"));
     let chunks: Vec<Chunk> = Chunk::new(res_txt);
 
-    println!("digraph nlp {{");
     for chunk in &chunks {
-        match chunk.parent {
-            Some(pid) => {
-                println!("\t{} -> {}", chunk.join_words(), chunks[pid].join_words());
-            },
-            None => (),
+        if chunk.words[0].pos != "動詞" {
+            continue;
         }
+        print!("{} ", chunk.words[0].base);
+        for other in &chunks {
+            let last = other.words.last().unwrap();
+            if other.parent.is_some() && other.parent.unwrap() == chunk.id && last.pos == "助詞" {
+                print!("{} ", last.surface);
+            }
+        }
+        println!("");
     }
-    println!("}}");
 }
 
 #[derive(Debug, Clone)]
