@@ -5,25 +5,15 @@ use itertools::Itertools;
 fn main() {
     //let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("しかしその当時は考えもなかったから別段私は恐ろしいとも思わなかった。"));
     //let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("吾輩はここで始めて人間というものを見た。"));
-    let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("別段くるにも及ばんさと、主人は手紙に返事をする。"));
+    //let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("別段くるにも及ばんさと、主人は手紙に返事をする。"));
+    let res_txt = Parser::new(String::from("-f1")).parse_to_str(String::from("吾輩はここで始めて人間というものを見た。"));
     let chunks: Vec<Chunk> = Chunk::new(res_txt);
     let verb: &Chunk = (&chunks).into_iter().rev().find(|w| w.include_pos(&String::from("動詞"))).unwrap();
     let noun: &Chunk = (&chunks).into_iter().rev().find(|w| match w.parent { None => false, Some(pid) => pid == verb.id }).unwrap();
-    print!("{}{} ", noun.join_words(), verb.join_words());
 
     for chunk in &chunks {
         if let Some(pid) = chunk.parent {
-            if pid == verb.id && chunk.words.last().unwrap().pos == String::from("助詞") && chunk.id != noun.id {
-                print!("{} ", chunk.words.last().unwrap().surface);
-            }
-        }
-    }
-
-    for chunk in &chunks {
-        if let Some(pid) = chunk.parent {
-            if pid == verb.id && chunk.words.last().unwrap().pos == String::from("助詞") && chunk.id != noun.id {
-                print!("{} ", chunk.join_words());
-            }
+            chunk.print_path(&chunks);
         }
     }
 }
@@ -160,5 +150,15 @@ impl Chunk {
 
      fn find_last_pos(&self, pos: String) -> Option<Word> {
          (&self.words).into_iter().rev().find(|w| w.pos == pos).and_then(|w| Some(w.clone()))
+     }
+
+     fn print_path(&self, chunks: &Vec<Chunk>) {
+         match self.parent {
+             None => println!("{}", self.join_words()),
+             Some(pid) => {
+                 print!("{} -> ", self.join_words());
+                 chunks[pid].print_path(&chunks);
+             }
+         }
      }
 }
