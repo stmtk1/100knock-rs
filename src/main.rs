@@ -18,6 +18,13 @@ fn main() {
                 print!("{} ", last.surface);
             }
         }
+
+        for other in &chunks {
+            let last = other.words.last().unwrap();
+            if other.parent.is_some() && other.parent.unwrap() == chunk.id && last.pos == "助詞" {
+                print!("{} ", other.join_words());
+            }
+        }
         println!("");
     }
 }
