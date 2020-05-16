@@ -2,31 +2,25 @@ use std::fs::{ self, File, OpenOptions };
 use rand::seq::SliceRandom;
 use std::io::{ Write, BufWriter };
 
-const P1: &str = "Reuters";
-const P2: &str = "Huffington Post";
-const P3: &str = "Businessweek";
-const P4: &str = "Contactmusic.com";
-const P5: &str = "Daily Mail";
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let content = fs::read_to_string("./newsCorpora.csv")?;
-    let lines: Vec<Vec<String>> = content.split('\n').map(|s| s.split('\t').map(|a| String::from(a)).collect()).collect();
-    let mut news: Vec<News> = lines.into_iter().filter(|v| v.len() >= 8 && (P1 == v[3] || P2 == v[3] || P3 == v[3] || P4 == v[3] || P5 == v[3])).map(|s| News::new(s)).collect();
-    let mut train = BufWriter::new(OpenOptions::new().create(true).append(true).open("train.txt")?);
-    let mut valid = BufWriter::new(OpenOptions::new().create(true).append(true).open("valid.txt")?);
-    let mut test = BufWriter::new(OpenOptions::new().create(true).append(true).open("test.txt")?);
+    let train_news: Vec<News> = fs::read_to_string("train.txt")?.split('\n').filter_map(|s| News::new(String::from(s))).collect();
+    let valid_news: Vec<News> = fs::read_to_string("valid.txt")?.split('\n').filter_map(|s| News::new(String::from(s))).collect();
+    let test_news: Vec<News> = fs::read_to_string("test.txt")?.split('\n').filter_map(|s| News::new(String::from(s))).collect();
 
-    let mut rng = rand::thread_rng();
-    news.shuffle(&mut rng);
+    let mut train = BufWriter::new(OpenOptions::new().create(true).append(true).open("train.feature.txt")?);
+    let mut valid = BufWriter::new(OpenOptions::new().create(true).append(true).open("valid.feature.txt")?);
+    let mut test = BufWriter::new(OpenOptions::new().create(true).append(true).open("test.feature.txt")?);
 
-    for (i, n) in (&news).into_iter().enumerate() {
-        if i < news.len() / 10 * 8 {
-            train.write(format!("{}\t{}\n", n.category, n.title).as_bytes())?;
-        } else if i < news.len() / 10 * 9 {
-            valid.write(format!("{}\t{}\n", n.category, n.title).as_bytes())?;
-        } else {
-            test.write(format!("{}\t{}\n", n.category, n.title).as_bytes())?;
-        }
+    for n in &train_news {
+        train.write(format!("{}\t{}\t{}\t{}\t{}\t{}\n", n.category, n.word_num, n.start_quote, n.start_capital, n.wl_average, n.wl_max).as_bytes())?;
+    }
+
+    for n in &valid_news {
+        valid.write(format!("{}\t{}\t{}\t{}\t{}\t{}\n", n.category, n.word_num, n.start_quote, n.start_capital, n.wl_average, n.wl_max).as_bytes())?;
+    }
+
+    for n in &test_news {
+        test.write(format!("{}\t{}\t{}\t{}\t{}\t{}\n", n.category, n.word_num, n.start_quote, n.start_capital, n.wl_average, n.wl_max).as_bytes())?;
     }
 
     train.flush()?;
@@ -37,14 +31,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 struct News {
     category: String,
-    title: String,
+    word_num: usize,
+    start_quote: bool,
+    start_capital: bool,
+    wl_average: usize,
+    wl_max: usize,
 }
 
 impl News {
-    fn new(s: Vec<String>) -> News {
-        News {
-            category: s[4].clone(),
-            title: s[1].clone(),
+    fn new(s: String) -> Option<News> {
+        let v: Vec<String> = s.split('\t').map(|a| String::from(a)).collect();
+        if v.len() != 2 {
+            return None;
         }
+        let a = v[1].split(' ').collect::<Vec<&str>>();
+        let mut wl_average = 0;
+        let mut wl_max = 0;
+        let start_char = v[1].as_bytes()[0] as char;
+
+        for c in &a {
+            let length = c.as_bytes().len();
+
+            wl_average += length;
+            wl_max = std::cmp::max(length, wl_max);
+        }
+        wl_average /= a.len();
+
+        Some(News {
+            category: v[0].clone(),
+            word_num: a.len(),
+            wl_max,
+            wl_average,
+            start_quote: start_char == '\'' || start_char == '"',
+            start_capital: start_char.is_uppercase(),
+        })
     }
 }
